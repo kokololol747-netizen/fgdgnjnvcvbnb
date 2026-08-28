@@ -881,7 +881,7 @@ async def subscription_watcher(bot) -> None:
 @user.message(CommandStart())
 async def cmd_start(message: Message):
     track(message, 'commands', 'start')
-    await message.answer('🐾 Приветик от ботика! 💖',
+    await message.answer('🐾 Приветик от ботика. У нас бесплатная выкладка ваших тейков! 💖',
                          reply_markup=main_keyboard())
 
 
