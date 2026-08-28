@@ -14,7 +14,7 @@ from aiogram.dispatcher.event.bases import SkipHandler
 from aiogram.enums import ChatType
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import (Message, ReplyKeyboardRemove, CallbackQuery, ReactionTypeEmoji,
-                           FSInputFile)
+                           FSInputFile, ReplyParameters)
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import StateFilter
 from aiogram.filters.command import CommandStart, Command
@@ -744,7 +744,7 @@ async def send_to_moderation(bot, post_id: str, post: dict, prefix: str = '') ->
 
 async def refresh_channel_post(bot, post: dict) -> bool:
     """Обновляет клавиатуру опубликованного поста под текущий статус работы."""
-    message_id = post.get('channel_message_id')
+    message_id = post.get('keyboard_message_id') or post.get('channel_message_id')
     if not message_id:
         return False
 
@@ -1378,6 +1378,12 @@ async def moderate_post(callback: CallbackQuery, action: str) -> None:
                 photo=post['photo'],
                 caption=channel_caption(post),
                 parse_mode='HTML',
+            )
+            
+            status_message = await callback.bot.send_message(
+                chat_id=PUBLISH_CHANNEL_ID,
+                text=f'Статус работы {author_label(post["user_id"])} ',
+                reply_parameters=ReplyParameters(message_id=published.message_id),
                 reply_markup=post_keyboard(post.get('actual', True), author_url(post['user_id'])),
             )
         except Exception:
@@ -1386,9 +1392,8 @@ async def moderate_post(callback: CallbackQuery, action: str) -> None:
                                            'Проверь права бота и попробуй ещё раз.')
             return
         post['channel_message_id'] = published.message_id
-        post['status'] = 'published'
-    elif post.get('status') != 'published':
-        post['status'] = 'rejected'     # отказ по напоминалке уже опубликованный пост не снимает
+        post['keyboard_message_id'] = status_message.message_id
+        post['status'] = 'published'    # отказ по напоминалке уже опубликованный пост не снимает
 
     post['awaiting'] = False
     increment_usage('functions', f'{action}_post')   # save_data здесь же сохраняет и работу
